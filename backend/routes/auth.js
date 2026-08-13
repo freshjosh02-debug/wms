@@ -4,7 +4,13 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { auth } = require('../middleware/auth');
 
-const generateToken = (id) => jwt.sign({ id }, process.env.JWT_SECRET || 'wms_secret_key_change_in_production', { expiresIn: '7d' });
+const generateToken = (id) => jwt.sign(
+  { id },
+  process.env.JWT_SECRET,
+  { expiresIn: '7d' }
+);
+
+const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
 // POST /api/auth/login
 router.post('/login', async (req, res) => {

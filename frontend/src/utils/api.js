@@ -24,15 +24,18 @@ api.interceptors.response.use(
   (response) => response.data,
   (error) => {
     const message = error.response?.data?.message || error.message || 'Something went wrong';
+
     if (error.response?.status === 401) {
       localStorage.removeItem('wms_token');
       localStorage.removeItem('wms_user');
+
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';
       }
     } else if (error.response?.status !== 404) {
       toast.error(message);
     }
+
     return Promise.reject(error);
   }
 );
@@ -102,8 +105,14 @@ export const reportsAPI = {
   getOrders: (params) => api.get('/reports/orders', { params }),
   getMovements: (params) => api.get('/reports/movements', { params }),
   getAnalytics: () => api.get('/reports/analytics'),
-  exportInventory: () => api.get('/reports/inventory', { params: { format: 'csv' }, responseType: 'blob' }),
-  exportOrders: (params) => api.get('/reports/orders', { params: { ...params, format: 'csv' }, responseType: 'blob' }),
+  exportInventory: () => api.get('/reports/inventory', {
+    params: { format: 'csv' },
+    responseType: 'blob'
+  }),
+  exportOrders: (params) => api.get('/reports/orders', {
+    params: { ...params, format: 'csv' },
+    responseType: 'blob'
+  }),
 };
 
 // Users
@@ -131,12 +140,29 @@ export const downloadCSV = (blob, filename) => {
 };
 
 export const formatCurrency = (amount, currency = 'NGN') =>
-  new Intl.NumberFormat('en-NG', { style: 'currency', currency }).format(amount || 0);
+  new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency
+  }).format(amount || 0);
 
 export const formatDate = (date) =>
-  date ? new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(date)) : '—';
+  date
+    ? new Intl.DateTimeFormat('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      }).format(new Date(date))
+    : '—';
 
 export const formatDateTime = (date) =>
-  date ? new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(date)) : '—';
+  date
+    ? new Intl.DateTimeFormat('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(new Date(date))
+    : '—';
 
 export default api;
