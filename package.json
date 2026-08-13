@@ -1,0 +1,17 @@
+{
+  "name": "wms-pro",
+  "version": "1.0.0",
+  "description": "WMS Pro - Full Stack Warehouse Management System",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install --prefix backend && npm install --prefix frontend",
+    "dev": "concurrently \"npm run dev --prefix backend\" \"npm start --prefix frontend\"",
+    "start": "npm start --prefix backend",
+    "build": "npm run build --prefix frontend",
+    "seed": "npm run seed --prefix backend",
+    "setup": "npm run install:all && cp backend/.env.example backend/.env"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
