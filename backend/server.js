@@ -1,5 +1,6 @@
 require('dotenv').config();
 const dns = require('dns');
+
 dns.setDefaultResultOrder('ipv4first');
 dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
 const express = require('express');
@@ -21,6 +22,9 @@ const notificationRoutes = require('./routes/notifications');
 const dashboardRoutes = require('./routes/dashboard');
 
 const app = express();
+
+// Trust proxy
+//app.set('trust proxy', 1);
 
 // Security middleware
 app.use(helmet({ contentSecurityPolicy: false }));
@@ -74,6 +78,13 @@ app.use((err, req, res, next) => {
 app.use((req, res) => {
   res.status(404).json({ success: false, message: 'Route not found' });
 });
+
+// Serve frontend static files
+//const path = require('path');
+//app.use(express.static(path.join(__dirname, '../frontend/build')));
+//app.get('*', (req, res) => {
+  //res.sendFile(path.join(__dirname, '../frontend/build/index.html'));
+//});
 
 // Database connection
 const connectDB = async () => {

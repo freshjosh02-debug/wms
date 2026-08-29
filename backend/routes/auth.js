@@ -10,8 +10,6 @@ const generateToken = (id) => jwt.sign(
   { expiresIn: '7d' }
 );
 
-const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
 // POST /api/auth/login
 router.post('/login', async (req, res) => {
   try {
