@@ -59,6 +59,7 @@ export const productsAPI = {
   update: (id, data) => api.put(`/products/${id}`, data),
   updateQuantity: (id, data) => api.patch(`/products/${id}/quantity`, data),
   delete: (id) => api.delete(`/products/${id}`),
+  import: (products) => api.post('/products/import', { products }),
 };
 
 // Orders

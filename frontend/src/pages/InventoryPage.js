@@ -5,9 +5,8 @@ import toast from 'react-hot-toast';
 import {
   PlusIcon, MagnifyingGlassIcon, FunnelIcon, PencilIcon,
   TrashIcon, QrCodeIcon, ArrowPathIcon, ExclamationTriangleIcon,
-  XMarkIcon, CheckIcon
+  XMarkIcon, CheckIcon, ArrowDownTrayIcon
 } from '@heroicons/react/24/outline';
-
 const UNITS = ['pcs', 'kg', 'lbs', 'liters', 'meters', 'boxes', 'pallets', 'cartons'];
 
 const statusBadge = (product) => {
@@ -151,6 +150,184 @@ function ProductModal({ product, warehouses, locations, categories, onClose, onS
   );
 }
 
+function ImportCSVModal({ onClose, onSave }) {
+  const [file, setFile] = useState(null);
+  const [preview, setPreview] = useState([]);
+  const [importing, setImporting] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState('');
+
+  const parseCSV = (text) => {
+    const lines = text.trim().split('\n');
+    const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+    return lines.slice(1).map(line => {
+      const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+      const obj = {};
+      headers.forEach((h, i) => { obj[h] = values[i] || ''; });
+      return obj;
+    }).filter(row => row.name);
+  };
+
+  const handleFile = (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    if (!f.name.endsWith('.csv')) {
+      setError('Please upload a .csv file');
+      return;
+    }
+    setFile(f);
+    setError('');
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const parsed = parseCSV(ev.target.result);
+      setPreview(parsed);
+    };
+    reader.readAsText(f);
+  };
+
+  const handleImport = async () => {
+    if (preview.length === 0) return;
+    setImporting(true);
+    try {
+      const res = await productsAPI.import(preview);
+      setResult(res.data);
+    } catch (err) {
+      setError('Import failed. Please check your CSV format.');
+    } finally { setImporting(false); }
+  };
+
+  const downloadTemplate = () => {
+    const headers = 'name,category,sku,barcode,quantity,reorderPoint,costPrice,sellingPrice,unit,brand,description';
+    const example = 'Example Product,Electronics,SKU-001,BAR001,100,10,5000,6500,pcs,BrandName,Product description';
+    const blob = new Blob([headers + '\n' + example], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'warenova-import-template.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-box max-w-3xl">
+        <div className="modal-header">
+          <h2 className="font-display font-semibold text-lg">Import Products from CSV</h2>
+          <button onClick={onClose} className="btn-ghost p-1.5 rounded-lg"><XMarkIcon className="w-5 h-5" /></button>
+        </div>
+        <div className="modal-body space-y-5">
+
+          {/* Template download */}
+          <div className="p-4 bg-brand-50 dark:bg-brand-950/30 rounded-xl border border-brand-100 dark:border-brand-900">
+            <p className="text-sm font-medium text-brand-800 dark:text-brand-300 mb-2">
+              📋 First time? Download the CSV template
+            </p>
+            <p className="text-xs text-brand-600 dark:text-brand-400 mb-3">
+              Fill in your products following the template format, then upload it below.
+            </p>
+            <button onClick={downloadTemplate} className="btn-secondary btn-sm">
+              <ArrowDownTrayIcon className="w-4 h-4" /> Download Template
+            </button>
+          </div>
+
+          {/* File upload */}
+          <div>
+            <label className="label">Upload CSV File</label>
+            <div className="border-2 border-dashed border-surface-200 dark:border-surface-700 rounded-xl p-8 text-center hover:border-brand-300 transition-colors">
+              <input
+                type="file"
+                accept=".csv"
+                onChange={handleFile}
+                className="hidden"
+                id="csv-upload"
+              />
+              <label htmlFor="csv-upload" className="cursor-pointer">
+                <ArrowDownTrayIcon className="w-10 h-10 mx-auto text-surface-300 mb-3 rotate-180" />
+                <p className="text-sm font-medium text-surface-700 dark:text-surface-300">
+                  {file ? file.name : 'Click to select CSV file'}
+                </p>
+                <p className="text-xs text-surface-400 mt-1">Only .csv files supported</p>
+              </label>
+            </div>
+            {error && <p className="text-sm text-red-500 mt-2">{error}</p>}
+          </div>
+
+          {/* Preview */}
+          {preview.length > 0 && !result && (
+            <div>
+              <p className="text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">
+                Preview — {preview.length} products found
+              </p>
+              <div className="table-container max-h-64 overflow-y-auto">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Name</th><th>Category</th><th>SKU</th>
+                      <th>Qty</th><th>Cost</th><th>Price</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {preview.slice(0, 10).map((row, i) => (
+                      <tr key={i}>
+                        <td className="font-medium">{row.name}</td>
+                        <td>{row.category}</td>
+                        <td><code className="text-xs">{row.sku}</code></td>
+                        <td>{row.quantity}</td>
+                        <td>₦{row.costPrice}</td>
+                        <td>₦{row.sellingPrice}</td>
+                      </tr>
+                    ))}
+                    {preview.length > 10 && (
+                      <tr><td colSpan={6} className="text-center text-surface-400 text-xs py-2">
+                        ...and {preview.length - 10} more rows
+                      </td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Result */}
+          {result && (
+            <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-200 dark:border-emerald-800">
+              <p className="font-semibold text-emerald-800 dark:text-emerald-400 mb-2">✅ Import Complete!</p>
+              <p className="text-sm text-emerald-700 dark:text-emerald-500">
+                {result.imported} products imported successfully
+              </p>
+              {result.skipped > 0 && (
+                <p className="text-sm text-amber-600 dark:text-amber-400">
+                  {result.skipped} products skipped (duplicate SKU)
+                </p>
+              )}
+              {result.errors?.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-sm text-red-500 font-medium">Errors:</p>
+                  {result.errors.map((e, i) => <p key={i} className="text-xs text-red-400">{e}</p>)}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="modal-footer">
+          <button onClick={onClose} className="btn-secondary">
+            {result ? 'Close' : 'Cancel'}
+          </button>
+          {!result && preview.length > 0 && (
+            <button onClick={handleImport} disabled={importing} className="btn-primary">
+              {importing
+                ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Importing...</>
+                : <><CheckIcon className="w-4 h-4" /> Import {preview.length} Products</>
+              }
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AdjustQtyModal({ product, onClose, onSave }) {
   const [qty, setQty] = useState('');
   const [type, setType] = useState('add');
@@ -260,10 +437,15 @@ export default function InventoryPage() {
           <p className="page-subtitle">{total} products total</p>
         </div>
         {isManager() && (
-          <button onClick={() => setModal('create')} className="btn-primary">
-            <PlusIcon className="w-4 h-4" /> Add Product
-          </button>
-        )}
+  <div className="flex gap-2">
+    <button onClick={() => setModal('import')} className="btn-secondary">
+      <ArrowDownTrayIcon className="w-4 h-4 rotate-180" /> Import CSV
+    </button>
+    <button onClick={() => setModal('create')} className="btn-primary">
+      <PlusIcon className="w-4 h-4" /> Add Product
+    </button>
+  </div>
+)}
       </div>
 
       {/* Filters */}
@@ -368,7 +550,9 @@ export default function InventoryPage() {
           </div>
         )}
       </div>
-
+       {modal === 'import' && (
+  <ImportCSVModal onClose={closeModal} onSave={onSave} />
+)}
       {modal === 'create' && (
         <ProductModal warehouses={warehouses} locations={locations} categories={categories} onClose={closeModal} onSave={onSave} />
       )}

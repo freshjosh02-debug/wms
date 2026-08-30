@@ -136,4 +136,51 @@ router.delete('/:id', auth, authorize('admin'), async (req, res) => {
   }
 });
 
+
+// POST /api/products/import
+router.post('/import', auth, authorize('admin', 'manager'), async (req, res) => {
+  try {
+    const { products } = req.body;
+    if (!products || !Array.isArray(products) || products.length === 0) {
+      return res.status(400).json({ success: false, message: 'No products provided' });
+    }
+
+    const results = { imported: 0, skipped: 0, errors: [] };
+
+    for (const row of products) {
+      try {
+        // Check if SKU already exists
+        if (row.sku) {
+          const existing = await Product.findOne({ sku: row.sku });
+          if (existing) {
+            results.skipped++;
+            continue;
+          }
+        }
+        await Product.create({
+          name: row.name,
+          category: row.category || 'Uncategorized',
+          sku: row.sku || undefined,
+          barcode: row.barcode || undefined,
+          quantity: parseInt(row.quantity) || 0,
+          reorderPoint: parseInt(row.reorderPoint) || 10,
+          costPrice: parseFloat(row.costPrice) || 0,
+          sellingPrice: parseFloat(row.sellingPrice) || 0,
+          unit: row.unit || 'pcs',
+          brand: row.brand || '',
+          description: row.description || '',
+          createdBy: req.user._id
+        });
+        results.imported++;
+      } catch (err) {
+        results.errors.push(`Row "${row.name}": ${err.message}`);
+      }
+    }
+
+    res.json({ success: true, data: results });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 module.exports = router;
